@@ -16,7 +16,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #define STB_PERLIN_IMPLEMENTATION
 #include "includes/stdperlin.h"
