@@ -9,6 +9,18 @@
 
 #define MINE -1
 
+char *numcolors[] = {
+    "\033[0;90m",
+    "\033[0;94m",
+    "\033[32m",
+    "\033[0;91m",
+    "\033[34m",
+    "\033[31m",
+    "\033[36m",
+    "", // normally black
+    "\033[0;95m"
+};
+
 typedef struct {
     int width, height;
     char **board;
@@ -34,6 +46,14 @@ void refreshMineCounts(MSBoard *msb) {
                 }
             }
             msb->board[y][x] = surroundingMines;
+        }
+    }
+}
+
+void revealBoard(MSBoard *msb) {
+    for (int i = 0; i < msb->height; i++) {
+        for (int j = 0; j < msb->width; j++) {
+            msb->revealed[i][j] = 1;
         }
     }
 }
@@ -112,7 +132,7 @@ void printBoard(MSBoard msb) {
                printf("\033[31mF\033[0m ");
             } else if (msb.revealed[y][x]) {
                 if (msb.board[y][x] == -1) printf("M ");
-                else printf("%i ", msb.board[y][x]);
+                else printf("%s%i\033[0m ", numcolors[msb.board[y][x]], msb.board[y][x]);
             } else {
                 printf("* ");
             }
@@ -121,11 +141,29 @@ void printBoard(MSBoard msb) {
     }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    if (argc != 4) {
+        printf("Usage: %s <rows> <columns> <mines>\n", argv[0]);
+        printf("Example: %s 16 30 99\n", argv[0]);
+        return 1;
+    }
+
+    int height = atoi(argv[1]);
+    int width = atoi(argv[2]);
+    int mines = atoi(argv[3]);
+
+    if (height <= 0 || width <= 0 || mines <= 0) {
+        printf("Error: rows, columns, and mines must be positive integers\n");
+        return 1;
+    }
+
+    if (mines >= height * width) {
+        printf("Error: number of mines must be less than total cells (%d)\n", height * width);
+        return 1;
+    }
+
     srand(time(0));
-    // MSBoard msb = createBoard(9, 9, 10); // Beginner
-    MSBoard msb = createBoard(16, 16, 40); // Intermediate
-    // MSBoard msb = createBoard(30, 16, 99); // Expert
+    MSBoard msb = createBoard(width, height, mines);
     
     int numCells = msb.width * msb.height;
     int revealedGoal = numCells - msb.mines;
@@ -186,22 +224,38 @@ int main() {
             int result = revealMine(&msb, x, row-1);
             if (result) {
                 if (firstMove) {
-                    //printf("You would have died unluckily on first move, but thanks to ReRoll Tech, you have another chance!");
+                    // Clear the clicked cell
                     msb.board[row-1][x] = 0;
-                    int Nx, Ny;
-                    do {
-                        Nx = rand() % msb.width;
-                        Ny = rand() % msb.height;
-                    } while (msb.board[Ny][Nx] == MINE || (x == Nx && row-1 == Ny));
-                    msb.board[Ny][Nx] = MINE; // -1 = mine
-
-                    refreshMineCounts(&msb);
-                } else {
-                    for (int i = 0; i < msb.height; i++) {
-                        for (int j = 0; j < msb.width; j++) {
-                            msb.revealed[i][j] = 1;
+                    
+                    // Clear and relocate all surrounding mines
+                    for (int i = -1; i <= 1; i++) {
+                        for (int j = -1; j <= 1; j++) {
+                            if (i == 0 && j == 0) continue;
+                            int ny = row-1 + i;
+                            int nx = x + j;
+                            if (ny < 0 || ny >= msb.height) continue;
+                            if (nx < 0 || nx >= msb.width) continue;
+                            
+                            // If this cell was a mine, relocate it
+                            if (msb.board[ny][nx] == MINE) {
+                                msb.board[ny][nx] = 0;
+                                
+                                // Find new location outside the 3x3 area
+                                int Nx, Ny;
+                                do {
+                                    Nx = rand() % msb.width;
+                                    Ny = rand() % msb.height;
+                                } while (msb.board[Ny][Nx] == MINE || 
+                                         (Nx >= x-1 && Nx <= x+1 && Ny >= row-2 && Ny <= row));
+                                msb.board[Ny][Nx] = MINE;
+                            }
                         }
                     }
+
+                    refreshMineCounts(&msb);
+                    revealMine(&msb, x, row-1);
+                } else {
+                    revealBoard(&msb);
                     printf("\033[2J\033[H");
                     printBoard(msb);
                     printf("Mine triggered, game over!\n");
@@ -215,6 +269,8 @@ int main() {
     }
 
     if (!gameLost) {
+        revealBoard(&msb);
+        printBoard(msb);
         printf("Board cleared, you won!\n");
     }
 }
