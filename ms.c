@@ -123,7 +123,9 @@ void printBoard(MSBoard msb) {
 
 int main() {
     srand(time(0));
-    MSBoard msb = createBoard(30, 16, 99);
+    // MSBoard msb = createBoard(9, 9, 10); // Beginner
+    MSBoard msb = createBoard(16, 16, 40); // Intermediate
+    // MSBoard msb = createBoard(30, 16, 99); // Expert
     
     int numCells = msb.width * msb.height;
     int revealedGoal = numCells - msb.mines;
