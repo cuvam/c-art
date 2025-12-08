@@ -1,8 +1,6 @@
 /*
   A simple recreation of Minesweeper on the command line. Type the row number + column letter + action.
   Use . to reveal (e.g., 5a.) or ! to toggle a flag (e.g., 5a!).
-
-  For the moment, doesn't ensure that the first move isn't a mine. You could get unlucky.
 */
 
 #include <stdio.h>
