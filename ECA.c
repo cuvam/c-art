@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #define WIDTH 80
+#define HEIGHT 128
 
 int main(int argc, char *argv[]) {
     int rule = 30;
@@ -26,7 +27,7 @@ int main(int argc, char *argv[]) {
     
     int cy = 0;
     char nextbits[WIDTH];
-    while (cy < 128) {
+    while (cy < HEIGHT) {
         printf("%s\n", bits);
         for (int i = 0; i < WIDTH; i++) {
             int r = 0;
