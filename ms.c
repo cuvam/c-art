@@ -30,6 +30,14 @@ typedef struct {
     int numRevealed;
 } MSBoard;
 
+#include <sys/time.h>
+
+long long get_epoch_millis(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (long long)tv.tv_sec * 1000LL + tv.tv_usec / 1000LL;
+}
+
 void refreshMineCounts(MSBoard *msb) {
     // for each non-mine spot, put the number of mines that surround it
     for (int y = 0; y < msb->height; y++) {
@@ -141,6 +149,8 @@ void printBoard(MSBoard msb) {
     }
 }
 
+#define SINCE ((float)(get_epoch_millis() - startTime) / 1000.0)
+
 int main(int argc, char *argv[]) {
     if (argc != 4) {
         printf("Usage: %s <rows> <columns> <mines>\n", argv[0]);
@@ -162,6 +172,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    FILE *histfp = fopen("/tmp/mshistory.txt", "w");
+    if (!histfp) {
+        printf("Failed to open history file");
+    }
+
     srand(time(0));
     MSBoard msb = createBoard(width, height, mines);
     
@@ -169,6 +184,8 @@ int main(int argc, char *argv[]) {
     int revealedGoal = numCells - msb.mines;
     int gameLost = 0;
     int firstMove = 1;
+
+    long long startTime = get_epoch_millis();
 
     while (msb.numRevealed < revealedGoal) {
         printf("\033[2J\033[H");
@@ -213,6 +230,11 @@ int main(int argc, char *argv[]) {
             
             if (action == '!') {
                 msb.flagged[row-1][x] = !msb.flagged[row-1][x];
+                if (msb.flagged[row-1][x]) {
+                    fprintf(histfp, "%.3f Flag: %i%c\n", SINCE, row, col);
+                } else {
+                    fprintf(histfp, "%.3f Unflag: %i%c\n", SINCE, row, col);
+                }
                 break;
             }
             
@@ -220,6 +242,8 @@ int main(int argc, char *argv[]) {
                 printf("Cell is flagged. Unflag first.\n");
                 continue;
             }
+
+            fprintf(histfp, "%.3f Move: %i%c\n", SINCE, row, col);
             
             int result = revealMine(&msb, x, row-1);
             if (result) {
@@ -258,6 +282,7 @@ int main(int argc, char *argv[]) {
                     revealBoard(&msb);
                     printf("\033[2J\033[H");
                     printBoard(msb);
+                    fprintf(histfp, "%.3f Mine triggered at %i%c\n", SINCE, row, col);
                     printf("Mine triggered, game over!\n");
                     gameLost = 1;
                 }
@@ -271,6 +296,9 @@ int main(int argc, char *argv[]) {
     if (!gameLost) {
         revealBoard(&msb);
         printBoard(msb);
+        fprintf(histfp, "%.3f Board cleared\n", SINCE);
         printf("Board cleared, you won!\n");
     }
+    printf("Game history output to /tmp/mshistory.txt\n");
+    fclose(histfp);
 }
